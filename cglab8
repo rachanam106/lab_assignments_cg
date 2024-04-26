@@ -1,0 +1,142 @@
+#include <GL/glut.h>
+#include <GL/glu.h>
+#include <GL/gl.h>
+#include <cmath>
+
+#define PI 3.14159265358979323846
+
+float angle = 0.0f;
+
+// Function for cubic interpolation
+float cubicInterpolation(float y0, float y1, float y2, float y3, float mu) {
+    float a0, a1, a2, a3;
+    float mu2;
+
+    mu2 = mu * mu;
+    a0 = y3 - y2 - y0 + y1;
+    a1 = y0 - y1 - a0;
+    a2 = y2 - y0;
+    a3 = y1;
+
+    return (a0 * mu * mu2 + a1 * mu2 + a2 * mu + a3);
+}
+
+void drawTorus(float innerRadius, float outerRadius, int sides, int rings) {
+    float theta, phi, theta1;
+    float cosTheta, sinTheta;
+    float cosTheta1, sinTheta1;
+    float ringDelta = 2.0 * PI / rings;
+    float sideDelta = 2.0 * PI / sides;
+    float cosPhi, sinPhi, dist;
+
+    // Set color for the base torus (light brown)
+    glColor3f(0.804f, 0.522f, 0.247f); // Light brown color
+
+    for (int i = rings - 1; i >= 0; i--) {
+        theta = i * ringDelta;
+        theta1 = theta + ringDelta;
+        cosTheta = cos(theta);
+        sinTheta = sin(theta);
+        cosTheta1 = cos(theta1);
+        sinTheta1 = sin(theta1);
+
+        glBegin(GL_QUAD_STRIP);
+        for (int j = sides; j >= 0; j--) {
+            phi = j * sideDelta;
+            cosPhi = cos(phi);
+            sinPhi = sin(phi);
+            dist = outerRadius + innerRadius * cosPhi;
+
+            glNormal3f(cosTheta1 * cosPhi, -sinTheta1 * cosPhi, sinPhi);
+            glVertex3f(cosTheta1 * dist, -sinTheta1 * dist, innerRadius * sinPhi);
+
+            glNormal3f(cosTheta * cosPhi, -sinTheta * cosPhi, sinPhi);
+            glVertex3f(cosTheta * dist, -sinTheta * dist, innerRadius * sinPhi);
+        }
+        glEnd();
+    }
+}
+
+void drawSprinkles(float innerRadius, float outerRadius, int sides, int rings, int numSprinkles) {
+    float sideDelta = 2.0 * PI / sides;
+    float ringDelta = 2.0 * PI / rings;
+
+    for (int i = 0; i < numSprinkles; ++i) {
+        int ringIndex = rand() % rings;
+        int sideIndex = rand() % sides;
+
+        float theta = ringIndex * ringDelta;
+        float phi = sideIndex * sideDelta;
+
+        float cosTheta = cos(theta);
+        float sinTheta = sin(theta);
+        float cosPhi = cos(phi);
+        float sinPhi = sin(phi);
+
+        float dist = outerRadius + innerRadius * cosPhi;
+
+        float sprinkleHeight = innerRadius * sinPhi;
+        float sprinkleRadius = 0.02f;
+
+        // Check if the current point is on the white side of the doughnut
+        if (sinPhi > 0) {
+            glPushMatrix();
+            // Set random color for the sprinkles
+            glColor3f((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+            glTranslatef(cosTheta * dist, -sinTheta * dist, sprinkleHeight);
+            glutSolidSphere(sprinkleRadius, 20, 20); // Draw a small sphere as a sprinkle
+            glPopMatrix();
+        }
+    }
+}
+
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glLoadIdentity();
+
+    glTranslatef(0.0f, 0.0f, -5.0f);
+    glRotatef(angle, 1.0f, 1.0f, 1.0f);
+
+    glBegin(GL_POLYGON);
+    drawTorus(0.3f, 1.0f, 30, 30);
+    glEnd();
+
+    // Draw sprinkles
+    drawSprinkles(0.3f, 1.0f, 30, 30, 100);
+
+    glutSwapBuffers();
+}
+
+void reshape(int width, int height) {
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+void timer(int value) {
+    angle += 2.0f;
+    if (angle > 360) angle -= 360;
+    glutPostRedisplay();
+    glutTimerFunc(16, timer, 0);
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("OpenGL Torus Animation");
+
+    glEnable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutTimerFunc(0, timer, 0);
+
+    glutMainLoop();
+    return 0;
+}
+
